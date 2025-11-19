@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Document Filler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for chat */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center font-sans text-slate-800">
+
+    <div class="w-full max-w-2xl mx-auto p-6">
+
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-slate-900 mb-2">Legal Doc Filler</h1>
+            <p class="text-slate-500">Upload a draft, chat to fill details, and download the final version.</p>
+        </div>
+
+        <!-- Main Card -->
+        <div
+            class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 min-h-[400px] flex flex-col relative">
+
+            <!-- STAGE 1: UPLOAD -->
+            <div id="stage-upload"
+                class="absolute inset-0 p-10 flex flex-col items-center justify-center transition-all duration-500">
+                <div id="drop-zone" class="w-full h-64 border-2 border-dashed border-slate-300 bg-slate-50 rounded-xl flex flex-col items-center justify-center cursor-pointer
+                           hover:border-blue-500 hover:bg-blue-50 transition-all group">
+
+                    <div class="p-4 bg-white rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                            </path>
+                        </svg>
+                    </div>
+                    <p class="text-lg font-medium text-slate-700">Drop your legal draft here</p>
+                    <p class="text-sm text-slate-400 mt-1">Supports .docx and .pdf</p>
+                    <input id="file-input" type="file" accept=".pdf,.docx" class="hidden" />
+                </div>
+                <p id="upload-error" class="text-red-500 text-sm mt-4 hidden"></p>
+            </div>
+
+            <!-- STAGE 2: GET STARTED -->
+            <div id="stage-start"
+                class="absolute inset-0 p-10 flex flex-col items-center justify-center hidden bg-white z-10">
+                <div class="text-center">
+                    <div
+                        class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">File Uploaded!</h3>
+                    <p class="text-slate-500 mb-8" id="uploaded-filename">contract_draft.docx</p>
+
+                    <button id="btn-get-started"
+                        class="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:bg-blue-700 hover:shadow-blue-200 transition-all transform hover:-translate-y-0.5">
+                        Get Started
+                    </button>
+                    <p id="analyzing-text" class="text-blue-600 mt-4 text-sm font-medium animate-pulse hidden">
+                        Analyzing document with Gemini...
+                    </p>
+                </div>
+            </div>
+
+            <!-- STAGE 3: CHAT -->
+            <div id="stage-chat" class="absolute inset-0 flex flex-col hidden bg-white z-20">
+                <!-- Chat Header -->
+                <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <span class="font-semibold text-slate-700">Filling Details</span>
+                    <span class="text-xs font-medium px-2 py-1 bg-blue-100 text-blue-700 rounded-full"
+                        id="progress-badge">0%</span>
+                </div>
+
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="flex-1 p-6 overflow-y-auto chat-scroll space-y-4">
+                    <!-- Messages will be injected here -->
+                </div>
+
+                <!-- Input Area -->
+                <div class="p-4 border-t border-slate-100 bg-white">
+                    <div class="flex gap-2">
+                        <input id="chat-input" type="text" placeholder="Type your answer..."
+                            class="flex-1 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            disabled />
+                        <button id="btn-send"
+                            class="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STAGE 4: DOWNLOAD -->
+            <div id="stage-download"
+                class="absolute inset-0 p-10 flex flex-col items-center justify-center hidden bg-white z-30">
+                <div class="text-center">
+                    <div
+                        class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">All Done!</h3>
+                    <p class="text-slate-500 mb-8">Your document has been generated and is ready.</p>
+
+                    <a id="download-link" href="#"
+                        class="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 hover:shadow-blue-200 transition-all transform hover:-translate-y-0.5">
+                        <span>Download Document</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                    </a>
+
+                    <button onclick="location.reload()"
+                        class="mt-6 text-slate-400 hover:text-slate-600 text-sm underline">
+                        Start Over
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // State
+        let sessionId = null;
+        let variables = [];
+        let currentVariableIndex = 0;
+        let answers = {};
+
+        // DOM Elements
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const uploadError = document.getElementById("upload-error");
+
+        const stageUpload = document.getElementById("stage-upload");
+        const stageStart = document.getElementById("stage-start");
+        const stageChat = document.getElementById("stage-chat");
+        const stageDownload = document.getElementById("stage-download");
+
+        const uploadedFilename = document.getElementById("uploaded-filename");
+        const btnGetStarted = document.getElementById("btn-get-started");
+        const analyzingText = document.getElementById("analyzing-text");
+
+        const chatMessages = document.getElementById("chat-messages");
+        const chatInput = document.getElementById("chat-input");
+        const btnSend = document.getElementById("btn-send");
+        const progressBadge = document.getElementById("progress-badge");
+        const downloadLink = document.getElementById("download-link");
+
+        // --- Upload Logic ---
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) => handleUpload(e.target.files[0]));
+
+        ["dragenter", "dragover"].forEach(e => dropZone.addEventListener(e, (ev) => {
+            ev.preventDefault();
+            dropZone.classList.add("border-blue-500", "bg-blue-50");
+        }));
+        ["dragleave", "drop"].forEach(e => dropZone.addEventListener(e, (ev) => {
+            ev.preventDefault();
+            dropZone.classList.remove("border-blue-500", "bg-blue-50");
+        }));
+        dropZone.addEventListener("drop", (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file) handleUpload(file);
+        });
+
+        async function handleUpload(file) {
+            const formData = new FormData();
+            formData.append("file", file);
+            uploadError.classList.add("hidden");
+
+            try {
+                const res = await fetch("/upload", { method: "POST", body: formData });
+                const data = await res.json();
+
+                if (data.status === "success") {
+                    sessionId = data.session_id;
+                    uploadedFilename.textContent = file.name;
+                    showStage(stageStart);
+                } else {
+                    uploadError.textContent = data.message;
+                    uploadError.classList.remove("hidden");
+                }
+            } catch (err) {
+                uploadError.textContent = "Upload failed.";
+                uploadError.classList.remove("hidden");
+            }
+        }
+
+        // --- Analysis Logic ---
+        btnGetStarted.addEventListener("click", async () => {
+            btnGetStarted.classList.add("hidden");
+            analyzingText.classList.remove("hidden");
+
+            try {
+                const res = await fetch("/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                const data = await res.json();
+
+                if (data.status === "success") {
+                    variables = data.variables;
+                    if (variables.length === 0) {
+                        alert("No variables found in the document.");
+                        location.reload();
+                        return;
+                    }
+                    startChat();
+                } else {
+                    alert("Analysis failed: " + data.message);
+                    location.reload();
+                }
+            } catch (err) {
+                alert("Error during analysis.");
+                location.reload();
+            }
+        });
+
+        // --- Chat Logic ---
+        function startChat() {
+            showStage(stageChat);
+            currentVariableIndex = 0;
+            askNextQuestion();
+        }
+
+        function askNextQuestion() {
+            if (currentVariableIndex >= variables.length) {
+                finishChat();
+                return;
+            }
+
+            const variable = variables[currentVariableIndex];
+            const progress = Math.round((currentVariableIndex / variables.length) * 100);
+            progressBadge.textContent = `${progress}%`;
+
+            addMessage("system", `Please provide the <strong>${variable.name}</strong>.<br><span class="text-sm text-slate-500">${variable.description}</span>`);
+
+            chatInput.disabled = false;
+            btnSend.disabled = false;
+            chatInput.focus();
+        }
+
+        function addMessage(sender, html) {
+            const div = document.createElement("div");
+            div.className = `flex ${sender === "user" ? "justify-end" : "justify-start"} fade-in`;
+
+            const bubble = document.createElement("div");
+            bubble.className = `max-w-[80%] p-4 rounded-2xl ${sender === "user"
+                    ? "bg-blue-600 text-white rounded-br-none"
+                    : "bg-slate-100 text-slate-800 rounded-bl-none"
+                }`;
+            bubble.innerHTML = html;
+
+            div.appendChild(bubble);
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function handleSend() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addMessage("user", text);
+            chatInput.value = "";
+            chatInput.disabled = true;
+            btnSend.disabled = true;
+
+            // Save answer
+            const variable = variables[currentVariableIndex];
+            answers[variable.name] = text;
+
+            currentVariableIndex++;
+            setTimeout(askNextQuestion, 500);
+        }
+
+        btnSend.addEventListener("click", handleSend);
+        chatInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") handleSend();
+        });
+
+        async function finishChat() {
+            progressBadge.textContent = "100%";
+            addMessage("system", "Great! Generating your document now...");
+
+            try {
+                const res = await fetch("/generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_id: sessionId, answers: answers })
+                });
+                const data = await res.json();
+
+                if (data.status === "success") {
+                    downloadLink.href = data.download_url;
+                    setTimeout(() => showStage(stageDownload), 1000);
+                } else {
+                    addMessage("system", "Error generating document: " + data.message);
+                }
+            } catch (err) {
+                addMessage("system", "Unexpected error.");
+            }
+        }
+
+        // --- Helper ---
+        function showStage(stage) {
+            [stageUpload, stageStart, stageChat, stageDownload].forEach(s => s.classList.add("hidden"));
+            stage.classList.remove("hidden");
+        }
+    </script>
+</body>
+
+</html>
